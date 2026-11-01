@@ -1,0 +1,234 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apna Earning</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #101b35, #087d53);
+}
+
+.card {
+  width: 100%;
+  max-width: 390px;
+  padding: 28px 22px;
+  border-radius: 22px;
+  background: white;
+  text-align: center;
+  box-shadow: 0 12px 40px #0005;
+}
+
+.logo {
+  width: 68px;
+  height: 68px;
+  margin: auto;
+  border-radius: 20px;
+  background: #087d53;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  font-weight: bold;
+}
+
+h1 { color: #087d53; }
+p { color: #687386; }
+
+input {
+  width: 100%;
+  padding: 15px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 15px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #087d53;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+button:disabled { opacity: .6; }
+
+#otpSection, #welcome { display: none; }
+#message { min-height: 22px; font-size: 14px; }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <div class="logo">A</div>
+  <h1>Apna Earning</h1>
+  <p>Login karo aur earning ka safar shuru karo!</p>
+
+  <section id="phoneSection">
+    <input id="phone" type="tel" maxlength="10"
+      placeholder="10 digit mobile number">
+    <button id="sendBtn">Send OTP</button>
+  </section>
+
+  <section id="otpSection">
+    <p>Apne mobile par aaya OTP daalo</p>
+    <input id="otp" type="text" inputmode="numeric"
+      maxlength="6" placeholder="6 digit OTP">
+    <button id="verifyBtn">Verify OTP</button>
+  </section>
+
+  <section id="welcome">
+    <h2>Login Successful! 🎉</h2>
+    <p id="userPhone"></p>
+    <button id="logoutBtn">Logout</button>
+  </section>
+
+  <p id="message"></p>
+  <div id="recaptcha-container"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+  getAuth,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  onAuthStateChanged,
+  signOut
+} from
+"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCKTH6Ije52Z65ioPb0YsmhLkIGgxsN3rc",
+  authDomain: "apna-earning-f8e64.firebaseapp.com",
+  projectId: "apna-earning-f8e64",
+  appId: "1:427177052936:web:524732d6e432313d983abd"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const phoneSection = document.getElementById("phoneSection");
+const otpSection = document.getElementById("otpSection");
+const welcome = document.getElementById("welcome");
+const message = document.getElementById("message");
+
+let confirmationResult = null;
+let recaptchaVerifier = null;
+
+function showMessage(text, error = false) {
+  message.textContent = text;
+  message.style.color = error ? "red" : "#087d53";
+}
+
+document.getElementById("sendBtn").addEventListener("click", async () => {
+  const number = document.getElementById("phone").value.trim();
+
+  if (!/^[6-9]\d{9}$/.test(number)) {
+    showMessage("Sahi 10 digit mobile number daalo.", true);
+    return;
+  }
+
+  const button = document.getElementById("sendBtn");
+  button.disabled = true;
+  showMessage("OTP bheja ja raha hai...");
+
+  try {
+    recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      { size: "normal" }
+    );
+
+    await recaptchaVerifier.render();
+
+    confirmationResult = await signInWithPhoneNumber(
+      auth,
+      "+91" + number,
+      recaptchaVerifier
+    );
+
+    phoneSection.style.display = "none";
+    otpSection.style.display = "block";
+    showMessage("OTP bhej diya gaya hai.");
+  } catch (error) {
+    console.error(error);
+    showMessage("Error: " + error.message, true);
+
+    if (recaptchaVerifier) {
+      try { await recaptchaVerifier.clear(); } catch (e) {}
+      recaptchaVerifier = null;
+    }
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById("verifyBtn").addEventListener("click", async () => {
+  const code = document.getElementById("otp").value.trim();
+
+  if (!confirmationResult) {
+    showMessage("Pehle OTP mangwayein.", true);
+    return;
+  }
+
+  if (!/^\d{6}$/.test(code)) {
+    showMessage("6 digit OTP daalo.", true);
+    return;
+  }
+
+  const button = document.getElementById("verifyBtn");
+  button.disabled = true;
+
+  try {
+    await confirmationResult.confirm(code);
+    showMessage("Mobile verify ho gaya!");
+  } catch (error) {
+    console.error(error);
+    showMessage("OTP galat hai ya verification fail hua.", true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await signOut(auth);
+  showMessage("Aap logout ho gaye.");
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    phoneSection.style.display = "none";
+    otpSection.style.display = "none";
+    welcome.style.display = "block";
+    document.getElementById("userPhone").textContent =
+      "Mobile: " + user.phoneNumber;
+  } else {
+    phoneSection.style.display = "block";
+    otpSection.style.display = "none";
+    welcome.style.display = "none";
+  }
+});
+</script>
+
+</body>
+</html>
