@@ -1,0 +1,11 @@
+{
+  "name": "Apna Earning",
+  "short_name": "Apna Earning",
+  "description": "Apna Earning Demo App",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "portrait"
+}
